@@ -6,9 +6,14 @@ import (
 	"io"
 	"net/textproto"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
+
+// NNTP DATE command
+// yyyymmddhhmmss Server date and time
+const DateFormat = "20060102150405"
 
 type Client struct {
 	connection *textproto.Conn
@@ -50,6 +55,20 @@ func (c *Client) Close() (err error) {
 
 	c.connection.Close()
 	return
+}
+
+func (c *Client) Date() (t time.Time, err error) {
+	var line string
+
+	if _, line, err = c.command("DATE", 111); err != nil {
+		return
+	}
+
+	if t, err = time.Parse(DateFormat, line); err != nil {
+		return
+	}
+
+	return t, nil
 }
 
 // Selects a newsgroup as the currently selected newsgroup
