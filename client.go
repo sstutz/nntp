@@ -1,10 +1,13 @@
 package nntp
 
 import (
+	"bufio"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	"io"
 	"net/textproto"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type Client struct {
@@ -62,6 +65,25 @@ func (c *Client) Group(name string) (group *Group, err error) {
 	return group, err
 }
 
+func (c *Client) Head(message string) (header textproto.MIMEHeader, err error) {
+	if err = c.connection.PrintfLine("HEAD " + message); err != nil {
+		return
+	}
+
+	if _, _, err = c.connection.ReadCodeLine(221); err != nil {
+		return
+	}
+
+	// MIME Headers cannot be extracted from a dot encoded block / text
+	// This line returns a new Reader that satisfie reads using the decoded text
+	tp := textproto.NewReader(bufio.NewReader(c.connection.DotReader()))
+	if header, err = tp.ReadMIMEHeader(); err != nil && err != io.EOF {
+		return
+	}
+
+	return header, nil
+}
+
 // Returns a short summary of the commands that are understood by this implementation of the server
 func (c *Client) Help() (lines []string, err error) {
 	if _, lines, err = c.multilineCommand("HELP", 100); err != nil {
@@ -83,6 +105,24 @@ func (c *Client) Last() (string, string, error) {
 	}
 
 	return params[0], params[1], nil
+}
+
+func (c *Client) List() ([]Group, error) {
+	_, lines, err := c.multilineCommand("LIST", 215)
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make([]Group, 0, len(lines))
+	for _, line := range lines[1:] {
+		group, err := groupFromListLine(line)
+		if err != nil {
+			return nil, err
+		}
+		groups = append(groups, *group)
+	}
+
+	return groups, nil
 }
 
 // Selects the next article
