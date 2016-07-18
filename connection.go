@@ -2,7 +2,6 @@ package nntp
 
 import (
 	"crypto/tls"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"net/textproto"
 )
@@ -42,7 +41,6 @@ func dial(addr string) (*textproto.Conn, error) {
 }
 
 func dialTLS(addr string) (*textproto.Conn, error) {
-	fmt.Println("[DialTLS] Connecting over TLS")
 	c, err := tls.Dial("tcp", addr, nil)
 
 	if err != nil {
