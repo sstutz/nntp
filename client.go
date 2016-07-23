@@ -255,6 +255,12 @@ func (c *Client) Stat(id string) (string, string, error) {
 	return params[0], params[1], nil
 }
 
+// Specified in RFC 3977, formalized XOVER extensions
+func (c *Client) Over(start, end int) ([]ArticleOverview, error) {
+	return c.Xover(start, end)
+}
+
+// XOVER extensions as documented in RFC 2980
 func (c *Client) Xover(start, end int) ([]ArticleOverview, error) {
 	response, err := c.multilineCommand(fmt.Sprintf("XOVER %d-%d", start, end), 224)
 	if err != nil {
