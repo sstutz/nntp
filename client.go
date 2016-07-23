@@ -2,6 +2,7 @@ package nntp
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net/textproto"
 	"strconv"
@@ -23,12 +24,6 @@ type Client struct {
 
 type Credentials struct {
 	Username, Password string
-}
-
-type Response struct {
-	Code int
-	Line string
-	Data io.Reader
 }
 
 func (c *Client) Article(messageId string) (*Article, error) {
@@ -122,12 +117,6 @@ func (c *Client) Group(name string) (*Group, error) {
 	group, err := groupFromLine(response.Line)
 	log.Infof("Group selected: %s", group.Name)
 	return group, err
-}
-
-type GroupListing struct {
-	Number, Low, High int
-	Group             string
-	Range             []int
 }
 
 func (c *Client) ListGroup(group string) (*GroupListing, error) {
@@ -266,45 +255,23 @@ func (c *Client) Stat(id string) (string, string, error) {
 	return params[0], params[1], nil
 }
 
-func (c *Client) Xover() error {
-	//@todo(sstutz): Implement XOVER https://tools.ietf.org/html/rfc2980
-	return nil
-}
-
-// sends a low level command to nntp and checks the response code against the expected one.
-func (c *Client) command(cmd string, expected int) (*Response, error) {
-	rc, line, err := c.sendCommand(cmd, expected)
+func (c *Client) Xover(start, end int) ([]ArticleOverview, error) {
+	response, err := c.multilineCommand(fmt.Sprintf("XOVER %d-%d", start, end), 224)
 	if err != nil {
 		return nil, err
 	}
-	return &Response{
-		Code: rc,
-		Line: line,
-	}, nil
-}
-
-// sends a low level command to nntp and checks the response code against the expected one.
-// Also handles Multi-line Data Block reponse
-func (c *Client) multilineCommand(cmd string, expected int) (*Response, error) {
-	rc, line, err := c.sendCommand(cmd, expected)
-	if err != nil {
-		return nil, err
+	articles := []ArticleOverview{}
+	scanner := bufio.NewScanner(response.Data)
+	for scanner.Scan() {
+		article, err := overviewFromLine(scanner.Text())
+		if err != nil {
+			return nil, err
+		}
+		articles = append(articles, *article)
+	}
+	if scanner.Err() != nil {
+		return nil, scanner.Err()
 	}
 
-	return &Response{
-		Code: rc,
-		Line: line,
-		Data: c.connection.DotReader(),
-	}, nil
-}
-
-// Helper to send the actual command and checks the reponse code against the expexted one.
-func (c *Client) sendCommand(cmd string, expected int) (rc int, line string, err error) {
-	if err = c.connection.PrintfLine(cmd); err != nil {
-		return
-	}
-	if rc, line, err = c.connection.ReadCodeLine(expected); err != nil {
-		return
-	}
-	return
+	return articles, nil
 }

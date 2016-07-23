@@ -14,6 +14,12 @@ type Group struct {
 	Mode   string
 }
 
+type GroupListing struct {
+	Number, Low, High int
+	Group             string
+	Range             []int
+}
+
 func groupFromLine(line string) (*Group, error) {
 	var number, high, low int
 	var err error
