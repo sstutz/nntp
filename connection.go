@@ -2,22 +2,27 @@ package nntp
 
 import (
 	"crypto/tls"
-	log "github.com/Sirupsen/logrus"
 	"net/textproto"
 )
 
+var d dialer = &netDialer{}
+
+type dialer interface {
+	dial(addr string) (*textproto.Conn, error)
+	dialTLS(addr string) (*textproto.Conn, error)
+}
+
+// New creates a NNTP Client
 func New(s *Socket) (client *Client, err error) {
 	c := new(textproto.Conn)
 	if s.ssl {
-		if c, err = dialTLS(s.String()); err != nil {
-			return nil, err
-		}
+		c, err = d.dialTLS(s.String())
 	} else {
-		if c, err = dial(s.String()); err != nil {
-			return nil, err
-		}
+		c, err = d.dial(s.String())
 	}
-	log.Infof("Connected to NNTP")
+	if err != nil {
+		return nil, err
+	}
 	_, msg, err := c.ReadCodeLine(200)
 	if err != nil {
 		return nil, err
@@ -29,23 +34,16 @@ func New(s *Socket) (client *Client, err error) {
 	}, nil
 }
 
-func dial(addr string) (*textproto.Conn, error) {
-	c, err := textproto.Dial("tcp", addr)
+type netDialer struct{}
 
-	if err != nil {
-		return nil, err
-	}
-
-	return c, nil
-
+func (n *netDialer) dial(addr string) (c *textproto.Conn, err error) {
+	return textproto.Dial("tcp", addr)
 }
 
-func dialTLS(addr string) (*textproto.Conn, error) {
+func (n *netDialer) dialTLS(addr string) (*textproto.Conn, error) {
 	c, err := tls.Dial("tcp", addr, nil)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return textproto.NewConn(c), nil
 }

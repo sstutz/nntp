@@ -37,6 +37,7 @@ func (c *Client) multilineCommand(cmd string, expected int) (*Response, error) {
 
 // Helper to send the actual command and checks the reponse code against the expexted one.
 func (c *Client) sendCommand(cmd string, expected int) (rc int, line string, err error) {
+	println("test in sendcommand")
 	if err = c.connection.PrintfLine(cmd); err != nil {
 		return
 	}

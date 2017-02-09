@@ -89,7 +89,7 @@ func (c *Client) Capabilities() ([]string, error) {
 
 // Terminates current sessions
 func (c *Client) Close() error {
-	if _, err := c.command("QUIT", 206); err != nil {
+	if _, err := c.command("QUIT", 205); err != nil {
 		return err
 	}
 
